@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const PORT = 8080;
 app.use(express.static("public"));
+app.use(express.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 
 const urlDatabase = {
@@ -22,6 +23,10 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
+app.get("/urls/new", (req, res) => {
+  res.render("urls_new");
+});
+
 app.get("/urls/:id", (req, res) => {
   const templateVars = {
     id: req.params.id,
@@ -30,10 +35,35 @@ app.get("/urls/:id", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
+app.get("/u/:id", (req, res) => {
+  const longURL = urlDatabase[req.params.id];
+  res.redirect(longURL);
+});
+
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
+});
+
+app.post("/urls/", (req, res) => {
+  console.log(req.body);
+  const newKey = generateRandomString();
+  urlDatabase[newKey] = req.body.longURL;
+  console.log(urlDatabase);
+  res.redirect(`/urls/${newKey}`);
 });
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
+
+function generateRandomString() {
+  let randomString = "";
+  const characters =
+    "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (let i = 0; i < 6; i++) {
+    randomString += characters.charAt(
+      Math.floor(Math.random() * characters.length)
+    );
+  }
+  return randomString;
+}
