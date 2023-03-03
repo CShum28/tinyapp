@@ -52,6 +52,24 @@ app.post("/urls/", (req, res) => {
   res.redirect(`/urls/${newKey}`);
 });
 
+app.post("/urls/:id/delete", (req, res) => {
+  const id = req.params.id;
+  delete urlDatabase[id];
+  res.redirect("/urls/");
+});
+
+app.post("/urls/:id/edit", (req, res) => {
+  const id = req.params.id;
+  const longURL = req.body.longURL;
+  urlDatabase[id] = longURL;
+  res.redirect("/urls/");
+});
+
+app.post("/urls/:id", (req, res) => {
+  const id = req.params.id;
+  res.redirect("/urls/" + id);
+});
+
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
