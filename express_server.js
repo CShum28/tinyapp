@@ -67,7 +67,7 @@ app.post("/urls/:id/edit", (req, res) => {
 
 app.post("/urls/:id", (req, res) => {
   const id = req.params.id;
-  res.redirect("/urls/" + id);
+  res.redirect(`/urls/${id}`);
 });
 
 app.listen(PORT, () => {
