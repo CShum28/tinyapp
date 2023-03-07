@@ -12,6 +12,19 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com",
 };
 
+const users = {
+  userRandomID: {
+    id: "userRandomID",
+    email: "user@exmaple.com",
+    password: "purple-monkey-dinosaur",
+  },
+  user2RandomID: {
+    id: "user2RandomID",
+    email: "user2@example.com",
+    password: "dishwasher-funk",
+  },
+};
+
 // GET
 
 app.get("/", (req, res) => {
@@ -25,9 +38,11 @@ app.get("/urls.json", (req, res) => {
 // View all current urls
 
 app.get("/urls", (req, res) => {
+  const user_id = req.cookies["user_id"];
+  const user = users[user_id];
   const templateVars = {
     urls: urlDatabase,
-    username: req.cookies["username"],
+    user,
   };
   res.render("urls_index", templateVars);
 });
@@ -35,8 +50,11 @@ app.get("/urls", (req, res) => {
 // Create new key id and longURL
 
 app.get("/urls/new", (req, res) => {
+  const user_id = req.cookies["user_id"]; // just get the user id from cookies (not the users obj)
+  console.log(user_id);
+  const user = users[user_id]; // this is getting it from the obj users
   const templateVars = {
-    username: req.cookies["username"],
+    user,
   };
   res.render("urls_new", templateVars);
 });
@@ -44,10 +62,12 @@ app.get("/urls/new", (req, res) => {
 // View the url and key id directly
 
 app.get("/urls/:id", (req, res) => {
+  const user_id = req.cookies["user_id"];
+  const user = users[user_id];
   const templateVars = {
     id: req.params.id,
     longURL: urlDatabase[req.params.id],
-    username: req.cookies["username"],
+    user,
   };
   res.render("urls_show", templateVars);
 });
@@ -63,6 +83,24 @@ app.get("/u/:id", (req, res) => {
 
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
+});
+
+// View register page
+
+app.get("/register", (req, res) => {
+  const user_id = req.cookies["user_id"];
+  const user = users[user_id];
+  const templateVars = { user };
+  res.render("urls_registration", templateVars);
+});
+
+// View login page
+
+app.get("/login", (req, res) => {
+  const user_id = req.cookies["user_id"];
+  const user = users[user_id];
+  const templateVars = { user };
+  res.render("urls_login", templateVars);
 });
 
 // POST
@@ -102,19 +140,64 @@ app.post("/urls/:id", (req, res) => {
 //log in and log out
 
 app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username);
-  res.redirect("/urls");
+  console.log("--/login");
+  const userObj = getUserByEmail(req.body.email);
+
+  console.log(req.body);
+  if (userObj !== null) {
+    // check if passwords in user object match with what was entered
+    if (userObj.password !== req.body.password) {
+      res.status(403).send("Passwords is incorrect!");
+      return;
+    }
+    res.cookie("user_id", userObj.id);
+    res.redirect("/urls");
+  } else {
+    // check if email exists
+    res.status(403).send("The email does not exist!");
+    return;
+  }
 });
 
 app.post("/logout", (req, res) => {
-  res.cookie("username", req.body.username);
-  res.clearCookie("username");
+  res.clearCookie("user_id");
+  res.redirect("/login");
+});
+
+// register
+
+app.post("/register", (req, res) => {
+  // check if they did not enter anything for email / password
+  if (req.body.password.length < 1 || req.body.email < 1) {
+    res.status(400).send("Error 400 - password / email does not exist");
+    return;
+  }
+
+  // check to see if email already exists
+  // if (getUserByEmail().includes(req.body.email)) {
+  //   res.status(400).send("Error 400 - email already exists");
+  // }
+  if (getUserByEmail(req.body.email) !== null) {
+    //(!getUserByEmail(req.body.email))
+    res.status(400).send("Error 400 - email already exists");
+    return;
+  }
+
+  // else they can continue w. the new email and password
+  const newGeneratedID = generateRandomString();
+  users[newGeneratedID] = req.body;
+  users[newGeneratedID]["id"] = newGeneratedID;
+  res.cookie("user_id", newGeneratedID);
   res.redirect("/urls");
 });
+
+// listen
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
+
+// 6 string generator
 
 function generateRandomString() {
   let randomString = "";
@@ -126,4 +209,17 @@ function generateRandomString() {
     );
   }
   return randomString;
+}
+
+// emal loopup helper function
+
+function getUserByEmail(email) {
+  for (const user in users) {
+    if (email === users[user]["email"]) {
+      return users[user];
+      // return true;
+    }
+  }
+  return null;
+  // return false;
 }
