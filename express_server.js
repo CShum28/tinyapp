@@ -8,8 +8,14 @@ app.use(cookieParser());
 app.set("view engine", "ejs");
 
 const urlDatabase = {
-  b2xVn2: "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
+  b2xVn2: {
+    longURL: "http://www.lighthouselabs.ca",
+    userID: "aJ48lW",
+  },
+  "9sm5xK": {
+    longURL: "http://www.google.com",
+    userID: "aJ48lW",
+  },
 };
 
 const users = {
@@ -38,45 +44,83 @@ app.get("/urls.json", (req, res) => {
 // View all current urls
 
 app.get("/urls", (req, res) => {
-  const user_id = req.cookies["user_id"];
-  const user = users[user_id];
-  const templateVars = {
-    urls: urlDatabase,
-    user,
-  };
-  res.render("urls_index", templateVars);
+  // if cookie doesn't exist / user isnt logged in
+  if (!req.cookies["user_id"]) {
+    res.status(403).send("<h2>Please login first to view the urls</h2>");
+    return;
+  } else {
+    const user_id = req.cookies["user_id"];
+    const user = users[user_id];
+    const templateVars = {
+      urls: urlsForUser(user_id),
+      user,
+    };
+    res.render("urls_index", templateVars);
+  }
 });
 
 // Create new key id and longURL
 
 app.get("/urls/new", (req, res) => {
-  const user_id = req.cookies["user_id"]; // just get the user id from cookies (not the users obj)
-  console.log(user_id);
-  const user = users[user_id]; // this is getting it from the obj users
-  const templateVars = {
-    user,
-  };
-  res.render("urls_new", templateVars);
+  // cookie doesnt exist AKA user is not logged in
+  if (!req.cookies["user_id"]) {
+    const user_id = req.cookies["user_id"];
+    const user = users[user_id];
+    templateVars = { user };
+    res.render("urls_login", templateVars);
+  } else {
+    const user_id = req.cookies["user_id"]; // just get the user id from cookies (not the users obj)
+    const user = users[user_id]; // this is getting it from the obj users
+    const templateVars = {
+      user,
+    };
+    res.render("urls_new", templateVars);
+  }
 });
 
 // View the url and key id directly
 
 app.get("/urls/:id", (req, res) => {
-  const user_id = req.cookies["user_id"];
-  const user = users[user_id];
-  const templateVars = {
-    id: req.params.id,
-    longURL: urlDatabase[req.params.id],
-    user,
-  };
-  res.render("urls_show", templateVars);
+  // if user is not logged in / cookie does not exist
+  if (!req.cookies["user_id"]) {
+    res.send("Please login to view page!");
+    return;
+  }
+  const userUrls = urlsForUser(req.cookies["user_id"]);
+  const keysOfUserUrls = Object.keys(userUrls);
+  const keysOfUrlDatabase = Object.keys(urlDatabase);
+  if (!keysOfUrlDatabase.includes(req.params.id)) {
+    // if the id does not exist yet
+    res.status(403).send("The id does not exist!");
+    return;
+  } else if (!keysOfUserUrls.includes(req.params.id)) {
+    // if user is logged in, but the page does not belong to them
+    res.status(403).send("You do not own this url, so you can not view it");
+    return;
+  } else {
+    const user_id = req.cookies["user_id"];
+    const user = users[user_id];
+    const templateVars = {
+      id: req.params.id,
+      longURL: urlDatabase[req.params.id].longURL,
+      user,
+    };
+    res.render("urls_show", templateVars);
+  }
+  // }
 });
 
 // Direct access to website using key id
 
 app.get("/u/:id", (req, res) => {
-  const longURL = urlDatabase[req.params.id];
-  res.redirect(longURL);
+  const urlInfo = urlDatabase[req.params.id];
+  if (!urlInfo) {
+    res.status(403).send("<h2>This url does not exist!</h2>");
+    return;
+  } else {
+    const longURL = urlInfo.longURL;
+    res.redirect(longURL);
+  }
 });
 
 // View html example
@@ -88,19 +132,39 @@ app.get("/hello", (req, res) => {
 // View register page
 
 app.get("/register", (req, res) => {
-  const user_id = req.cookies["user_id"];
-  const user = users[user_id];
-  const templateVars = { user };
-  res.render("urls_registration", templateVars);
+  if (!req.cookies["user_id"]) {
+    const user_id = req.cookies["user_id"];
+    const user = users[user_id];
+    const templateVars = { user };
+    res.render("urls_registration", templateVars);
+  } else if (req.cookies["user_id"]) {
+    const user_id = req.cookies["user_id"];
+    const user = users[user_id];
+    const templateVars = {
+      urls: urlDatabase,
+      user,
+    };
+    res.render("urls_index", templateVars);
+  }
 });
 
 // View login page
 
 app.get("/login", (req, res) => {
-  const user_id = req.cookies["user_id"];
-  const user = users[user_id];
-  const templateVars = { user };
-  res.render("urls_login", templateVars);
+  if (!req.cookies["user_id"]) {
+    const user_id = req.cookies["user_id"];
+    const user = users[user_id];
+    const templateVars = { user };
+    res.render("urls_login", templateVars);
+  } else if (req.cookies["user_id"]) {
+    const user_id = req.cookies["user_id"];
+    const user = users[user_id];
+    const templateVars = {
+      urls: urlDatabase,
+      user,
+    };
+    res.render("urls_index", templateVars);
+  }
 });
 
 // POST
@@ -108,26 +172,62 @@ app.get("/login", (req, res) => {
 // View the list of urls
 
 app.post("/urls/", (req, res) => {
-  const newKey = generateRandomString();
-  urlDatabase[newKey] = req.body.longURL;
-  res.redirect(`/urls/${newKey}`);
+  // user is not logged in
+  const userId = req.cookies["user_id"];
+  if (!userId) {
+    res.status(403).send("<h2>You are not logged in!</h2>");
+    return;
+  } else {
+    const newKey = generateRandomString();
+    const createdNewLongURL = req.body.longURL;
+    urlDatabase[newKey] = {
+      longURL: createdNewLongURL,
+      userID: req.cookies["user_id"],
+    };
+    res.redirect(`/urls/${newKey}`);
+  }
 });
 
 // Delete the url through key id
 
 app.post("/urls/:id/delete", (req, res) => {
-  const id = req.params.id;
-  delete urlDatabase[id];
-  res.redirect("/urls/");
+  //check user id first
+  if (!req.cookies["user_id"]) {
+    res.status(403).send("You need to login to delete this!");
+    return;
+  }
+  const userUrls = urlsForUser(req.cookies["user_id"]);
+  const keysOfUserUrls = Object.keys(userUrls);
+  const keysOfUrlDatabase = Object.keys(urlDatabase);
+  if (!keysOfUrlDatabase.includes(req.params.id)) {
+    // check if the id exists or not
+    res.status(403).send("This can not be deleted, the id does not exist!");
+    return;
+  } else if (!keysOfUserUrls.includes(req.params.id)) {
+    // check if url belongs to user or not
+    res.status(403).send("You do not own this url so you can not delete it!");
+    return;
+  } else if (keysOfUserUrls.includes(req.params.id)) {
+    const id = req.params.id;
+    delete urlDatabase[id];
+    res.redirect("/urls/");
+  }
 });
 
 // Update the long url for an id
 
 app.post("/urls/:id/edit", (req, res) => {
-  const id = req.params.id;
-  const longURL = req.body.longURL;
-  urlDatabase[id] = longURL;
-  res.redirect("/urls/");
+  const userUrls = urlsForUser(req.cookies["user_id"]);
+  const keysOfUserUrls = Object.keys(userUrls);
+  if (keysOfUserUrls.includes(req.params.id)) {
+    const id = req.params.id;
+    const longURL = req.body.longURL;
+    const urlReplace = urlDatabase[id];
+    urlReplace["longURL"] = longURL; // replace long url instead of the object
+    res.redirect("/urls/");
+  } else {
+    res.status(403).send("You can not edit the url, you do not own it");
+  }
 });
 
 // View the key and longHRL
@@ -140,10 +240,7 @@ app.post("/urls/:id", (req, res) => {
 //log in and log out
 
 app.post("/login", (req, res) => {
-  console.log("--/login");
   const userObj = getUserByEmail(req.body.email);
-
-  console.log(req.body);
   if (userObj !== null) {
     // check if passwords in user object match with what was entered
     if (userObj.password !== req.body.password) {
@@ -222,4 +319,15 @@ function getUserByEmail(email) {
   }
   return null;
   // return false;
+}
+
+// function to compared ids to URLS
+
+function urlsForUser(id) {
+  let urls = {};
+  for (const url in urlDatabase) {
+    const urlUserID = urlDatabase[url]["userID"];
+    if (urlUserID === id) urls[url] = urlDatabase[url];
+  }
+  return urls;
 }
