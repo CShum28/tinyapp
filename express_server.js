@@ -1,5 +1,6 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
+const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080;
 app.use(express.static("public"));
@@ -242,13 +243,15 @@ app.post("/urls/:id", (req, res) => {
 app.post("/login", (req, res) => {
   const userObj = getUserByEmail(req.body.email);
   if (userObj !== null) {
-    // check if passwords in user object match with what was entered
-    if (userObj.password !== req.body.password) {
+    const result = bcrypt.compareSync(req.body.password, userObj.password);
+    // check if password entered matches hashed password
+    if (result) {
+      res.cookie("user_id", userObj.id);
+      res.redirect("/urls");
+    } else {
       res.status(403).send("Passwords is incorrect!");
       return;
     }
-    res.cookie("user_id", userObj.id);
-    res.redirect("/urls");
   } else {
     // check if email exists
     res.status(403).send("The email does not exist!");
@@ -281,9 +284,16 @@ app.post("/register", (req, res) => {
   }
 
   // else they can continue w. the new email and password
+
+  const password = req.body.password;
+  const hashedPassword = bcrypt.hashSync(password, 10);
+
   const newGeneratedID = generateRandomString();
-  users[newGeneratedID] = req.body;
-  users[newGeneratedID]["id"] = newGeneratedID;
+  users[newGeneratedID] = {
+    id: newGeneratedID,
+    email: req.body.email,
+    password: hashedPassword,
+  };
   res.cookie("user_id", newGeneratedID);
   res.redirect("/urls");
 });
@@ -311,9 +321,9 @@ function generateRandomString() {
 // emal loopup helper function
 
 function getUserByEmail(email) {
-  for (const user in users) {
-    if (email === users[user]["email"]) {
-      return users[user];
+  for (const userId in users) {
+    if (email === users[userId]["email"]) {
+      return users[userId];
       // return true;
     }
   }
