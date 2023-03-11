@@ -1,7 +1,10 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cookieSession = require("cookie-session");
-const bcrypt = require("bcryptjs");
+const methodOverride = require("method-override");
+const bcrypt = require("bcrypt");
+const { getUserByEmail } = require("./helpers.js");
+
 const app = express();
 const PORT = 8080;
 app.use(express.static("public"));
@@ -13,6 +16,7 @@ app.use(
     keys: ["random-array"],
   })
 );
+app.use(methodOverride("_method"));
 
 app.set("view engine", "ejs");
 
@@ -54,7 +58,9 @@ app.get("/urls.json", (req, res) => {
 
 app.get("/urls", (req, res) => {
   // if cookie doesn't exist / user isnt logged in
-  if (!req.session.user_id) {
+  const user_id = req.session.user_id;
+  const user = users[user_id];
+  if (!user) {
     res.status(403).send("<h2>Please login first to view the urls</h2>");
     return;
   } else {
@@ -195,7 +201,8 @@ app.post("/urls/", (req, res) => {
 
 // Delete the url through key id
 
-app.post("/urls/:id/delete", (req, res) => {
+// app.post("/urls/:id/delete", (req, res) => { // ORIGINAL LINE
+app.delete("/urls/:id", (req, res) => {
   //check user id first
   if (!req.session.user_id) {
     res.status(403).send("You need to login to delete this!");
@@ -221,7 +228,8 @@ app.post("/urls/:id/delete", (req, res) => {
 
 // Update the long url for an id
 
-app.post("/urls/:id/edit", (req, res) => {
+// app.post("/urls/:id/edit", (req, res) => { ORIGINAL LINE
+app.put("/urls/:id", (req, res) => {
   const userUrls = urlsForUser(req.session.user_id);
   const keysOfUserUrls = Object.keys(userUrls);
   if (keysOfUserUrls.includes(req.params.id)) {
@@ -245,8 +253,9 @@ app.post("/urls/:id", (req, res) => {
 //log in and log out
 
 app.post("/login", (req, res) => {
-  const userObj = getUserByEmail(req.body.email);
-  if (userObj !== null) {
+  const userObj = getUserByEmail(req.body.email, users);
+
+  if (userObj !== undefined) {
     const result = bcrypt.compareSync(req.body.password, userObj.password);
     // check if password entered matches hashed password
     if (result) {
@@ -254,13 +263,11 @@ app.post("/login", (req, res) => {
       req.session.user_id = userObj.id;
       res.redirect("/urls");
     } else {
-      res.status(403).send("Passwords is incorrect!");
-      return;
+      return res.status(403).send("Passwords is incorrect!");
     }
   } else {
     // check if email exists
-    res.status(403).send("The email does not exist!");
-    return;
+    return res.status(403).send("The email does not exist!");
   }
 });
 
@@ -279,17 +286,13 @@ app.post("/register", (req, res) => {
   }
 
   // check to see if email already exists
-  // if (getUserByEmail().includes(req.body.email)) {
-  //   res.status(400).send("Error 400 - email already exists");
-  // }
-  if (getUserByEmail(req.body.email) !== null) {
+  if (getUserByEmail(req.body.email, users) !== undefined) {
     //(!getUserByEmail(req.body.email))
     res.status(400).send("Error 400 - email already exists");
     return;
   }
 
   // else they can continue w. the new email and password
-
   const password = req.body.password;
   const hashedPassword = bcrypt.hashSync(password, 10);
   const newGeneratedID = generateRandomString();
@@ -321,21 +324,6 @@ function generateRandomString() {
   }
   return randomString;
 }
-
-// emal loopup helper function
-
-function getUserByEmail(email) {
-  for (const userId in users) {
-    if (email === users[userId]["email"]) {
-      return users[userId];
-      // return true;
-    }
-  }
-  return null;
-  // return false;
-}
-
-// function to compared ids to URLS
 
 function urlsForUser(id) {
   let urls = {};

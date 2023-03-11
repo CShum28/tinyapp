@@ -43,7 +43,8 @@
               <!-- <a href="http://localhost:8080/urls/<%= id %>">Edit</a> -->
             </td>
             <td>
-              <form method="POST" action="/urls/<%= id %>/delete">
+              <!-- <form method="POST" action="/urls/<%= id %>/delete"> ORIGINAL LINE-->
+              <form method="POST" action="/urls/<%= id %>?_method=DELETE">
                 <button class="btn btn-outline-danger" type="submit">
                   Delete
                 </button>
