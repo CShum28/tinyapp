@@ -4,9 +4,9 @@ const cookieSession = require("cookie-session");
 const methodOverride = require("method-override");
 const bcrypt = require("bcrypt");
 const { getUserByEmail } = require("./helpers.js");
-
 const app = express();
 const PORT = 8080;
+
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -19,6 +19,9 @@ app.use(
 app.use(methodOverride("_method"));
 
 app.set("view engine", "ejs");
+
+const dateTimeTracker = [];
+let urlVisitCounter = 1;
 
 const urlDatabase = {
   b2xVn2: {
@@ -119,11 +122,31 @@ app.get("/urls/:id", (req, res) => {
   } else {
     const user_id = req.session.user_id;
     const user = users[user_id];
+
+    const date = new Date();
+    const dateTime =
+      ("00" + (date.getMonth() + 1)).slice(-2) +
+      "/" +
+      ("00" + date.getDate()).slice(-2) +
+      "/" +
+      date.getFullYear() +
+      " " +
+      ("00" + date.getHours()).slice(-2) +
+      ":" +
+      ("00" + date.getMinutes()).slice(-2) +
+      ":" +
+      ("00" + date.getSeconds()).slice(-2);
+
+    dateTimeTracker.push(dateTime);
+    urlVisitCounter++;
     const templateVars = {
       id: req.params.id,
       longURL: urlDatabase[req.params.id].longURL,
       user,
+      dateTimeTracker,
+      urlVisitCounter,
     };
+
     res.render("urls_show", templateVars);
   }
   // }

@@ -30,6 +30,27 @@
           <button class="btn btn-primary" type="submit">Submit</button>
         </form>
       </div>
+      <div class="card-body">
+        <h5>Analytics</h5>
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">Number of Visits</th>
+              <th scope="col">Visitor ID</th>
+              <th scope="col">Time Stamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (let i = 1; i < urlVisitCounter; i++){ %>
+            <tr>
+              <td><%= i %></td>
+              <td><%= user.id %></td>
+              <td><%= dateTimeTracker[i - 1] %></td>
+            </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Bootstrap JS -->
