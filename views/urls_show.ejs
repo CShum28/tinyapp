@@ -24,8 +24,8 @@
       <div class="card-footer text-muted">
         <h5>Edit</h5>
         <form method="POST" action="/urls/<%= id %>?_method=PUT">
-          <label for="">New URL:</label>
-          <input placeholder="http://" type="text" name="longURL" />
+          <label for="edit">New URL:</label>
+          <input placeholder="http://" type="text" name="longURL" id="edit" />
           <button class="btn btn-primary" type="submit">Submit</button>
         </form>
       </div>
@@ -43,7 +43,7 @@
             <% for (let i = 1; i < userVisitCounter; i++){ %>
             <tr>
               <td><%= i %></td>
-              <td><%= user.id %></td>
+              <td><%= visiterTracker[i - 1] %></td>
               <td><%= dateTimeTracker[i - 1] %></td>
             </tr>
             <% } %>

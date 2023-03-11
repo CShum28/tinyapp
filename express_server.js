@@ -9,7 +9,7 @@ const PORT = 8080;
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(
-  cookieSession({//
+  cookieSession({
     name: "session",
     keys: ["random-array"],
   })
@@ -24,12 +24,14 @@ const urlDatabase = {
     userID: "aJ48lW",
     dateTimeTracker: [],
     urlVisitCounter: 1,
+    visiterTracker: [],
   },
   "9sm5xK": {
     longURL: "http://www.google.com",
     userID: "aJ48lW",
     dateTimeTracker: [],
     urlVisitCounter: 1,
+    visiterTracker: [],
   },
 };
 
@@ -100,23 +102,17 @@ app.get("/urls/new", (req, res) => {
 // View the url and key id directly
 
 app.get("/urls/:id", (req, res) => {
-  // cookie doesnt exist & user is not logged in
+  //Declare a function userIsAuthorize(request)
   const user_id = req.session.user_id;
   const user = users[user_id];
   if (!user) {
     res.send("Please login to view page!");
     return;
   }
-  const userUrls = urlsForUser(req.session.user_id);
-  const keysOfUserUrls = Object.keys(userUrls);
   const keysOfUrlDatabase = Object.keys(urlDatabase);
   if (!keysOfUrlDatabase.includes(req.params.id)) {
     // if the id does not exist yet
     res.status(403).send("The id does not exist!");
-    return;
-  } else if (!keysOfUserUrls.includes(req.params.id)) {
-    // if user is logged in, but the page does not belong to them
-    res.status(403).send("You do not own this url, so you can not view it");
     return;
   } else {
     const user_id = req.session.user_id;
@@ -137,12 +133,15 @@ app.get("/urls/:id", (req, res) => {
       ("00" + date.getSeconds()).slice(-2);
 
     urlDatabase[req.params.id].dateTimeTracker.push(dateTime);
+    urlDatabase[req.params.id].visiterTracker.push(user_id);
     urlDatabase[req.params.id].urlVisitCounter++;
+
     const templateVars = {
       id: req.params.id,
       longURL: urlDatabase[req.params.id].longURL,
       userVisitCounter: urlDatabase[req.params.id].urlVisitCounter,
       dateTimeTracker: urlDatabase[req.params.id].dateTimeTracker,
+      visiterTracker: urlDatabase[req.params.id].visiterTracker,
       user,
     };
 
@@ -215,8 +214,9 @@ app.post("/urls/", (req, res) => {
     urlDatabase[newKey] = {
       longURL: createdNewLongURL,
       userID: req.session.user_id,
-      dateTimeTracker: [], 
+      dateTimeTracker: [],
       urlVisitCounter: 1,
+      visiterTracker: [], // NEW LINE
     };
     res.redirect(`/urls/${newKey}`);
   }
@@ -267,8 +267,28 @@ app.put("/urls/:id", (req, res) => {
 // View the key and longHRL
 
 app.post("/urls/:id", (req, res) => {
-  const id = req.params.id;
-  res.redirect(`/urls/${id}`);
+  // cookie doesnt exist & user is not logged in
+  const user_id = req.session.user_id;
+  const user = users[user_id];
+  if (!user) {
+    res.send("Please login to view page!");
+    return;
+  }
+  const userUrls = urlsForUser(req.session.user_id);
+  const keysOfUserUrls = Object.keys(userUrls);
+  const keysOfUrlDatabase = Object.keys(urlDatabase);
+  if (!keysOfUrlDatabase.includes(req.params.id)) {
+    // if the id does not exist yet
+    res.status(403).send("The id does not exist!");
+    return;
+  } else if (!keysOfUserUrls.includes(req.params.id)) {
+    // if user is logged in, but the page does not belong to them
+    res.status(403).send("You do not own this url, so you can not view it"); // They can view but they can not edit
+    return;
+  } else {
+    const id = req.params.id;
+    res.redirect(`/urls/${id}`);
+  }
 });
 
 //log in and log out
