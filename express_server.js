@@ -1,5 +1,4 @@
 const express = require("express");
-const cookieParser = require("cookie-parser");
 const cookieSession = require("cookie-session");
 const methodOverride = require("method-override");
 const bcrypt = require("bcrypt");
@@ -9,9 +8,8 @@ const PORT = 8080;
 
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 app.use(
-  cookieSession({
+  cookieSession({//
     name: "session",
     keys: ["random-array"],
   })
@@ -20,17 +18,18 @@ app.use(methodOverride("_method"));
 
 app.set("view engine", "ejs");
 
-const dateTimeTracker = [];
-let urlVisitCounter = 1;
-
 const urlDatabase = {
   b2xVn2: {
     longURL: "http://www.lighthouselabs.ca",
     userID: "aJ48lW",
+    dateTimeTracker: [],
+    urlVisitCounter: 1,
   },
   "9sm5xK": {
     longURL: "http://www.google.com",
     userID: "aJ48lW",
+    dateTimeTracker: [],
+    urlVisitCounter: 1,
   },
 };
 
@@ -137,19 +136,18 @@ app.get("/urls/:id", (req, res) => {
       ":" +
       ("00" + date.getSeconds()).slice(-2);
 
-    dateTimeTracker.push(dateTime);
-    urlVisitCounter++;
+    urlDatabase[req.params.id].dateTimeTracker.push(dateTime);
+    urlDatabase[req.params.id].urlVisitCounter++;
     const templateVars = {
       id: req.params.id,
       longURL: urlDatabase[req.params.id].longURL,
+      userVisitCounter: urlDatabase[req.params.id].urlVisitCounter,
+      dateTimeTracker: urlDatabase[req.params.id].dateTimeTracker,
       user,
-      dateTimeTracker,
-      urlVisitCounter,
     };
 
     res.render("urls_show", templateVars);
   }
-  // }
 });
 
 // Direct access to website using key id
@@ -217,6 +215,8 @@ app.post("/urls/", (req, res) => {
     urlDatabase[newKey] = {
       longURL: createdNewLongURL,
       userID: req.session.user_id,
+      dateTimeTracker: [], 
+      urlVisitCounter: 1,
     };
     res.redirect(`/urls/${newKey}`);
   }
@@ -224,7 +224,6 @@ app.post("/urls/", (req, res) => {
 
 // Delete the url through key id
 
-// app.post("/urls/:id/delete", (req, res) => { // ORIGINAL LINE
 app.delete("/urls/:id", (req, res) => {
   //check user id first
   if (!req.session.user_id) {
@@ -251,7 +250,6 @@ app.delete("/urls/:id", (req, res) => {
 
 // Update the long url for an id
 
-// app.post("/urls/:id/edit", (req, res) => { ORIGINAL LINE
 app.put("/urls/:id", (req, res) => {
   const userUrls = urlsForUser(req.session.user_id);
   const keysOfUserUrls = Object.keys(userUrls);
@@ -310,7 +308,6 @@ app.post("/register", (req, res) => {
 
   // check to see if email already exists
   if (getUserByEmail(req.body.email, users) !== undefined) {
-    //(!getUserByEmail(req.body.email))
     res.status(400).send("Error 400 - email already exists");
     return;
   }
