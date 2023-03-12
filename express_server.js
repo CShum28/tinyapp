@@ -244,7 +244,7 @@ app.delete("/urls/:id", (req, res) => {
   }
 });
 
-// Update the long url for an id
+// Update the long url for an id - EDITTING
 
 app.put("/urls/:id", (req, res) => {
   const userUrls = urlsForUser(req.session.user_id);
@@ -260,7 +260,7 @@ app.put("/urls/:id", (req, res) => {
   }
 });
 
-// View the key and longHRL
+// View the key and longHRL - viewing page directly
 
 app.post("/urls/:id", (req, res) => {
   // cookie doesnt exist & user is not logged in
