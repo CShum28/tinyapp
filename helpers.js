@@ -1,4 +1,4 @@
-const { urlDatabase, users } = require("./database.js");
+const { urlDatabase } = require("./database.js");
 
 // emal loopup helper function
 
