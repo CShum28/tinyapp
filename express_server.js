@@ -2,7 +2,12 @@ const express = require("express");
 const cookieSession = require("cookie-session");
 const methodOverride = require("method-override");
 const bcrypt = require("bcrypt");
-const { getUserByEmail } = require("./helpers.js");
+const {
+  getUserByEmail,
+  generateRandomString,
+  urlsForUser,
+} = require("./helpers.js");
+const { urlDatabase, users } = require("./database.js");
 const app = express();
 const PORT = 8080;
 
@@ -18,40 +23,25 @@ app.use(methodOverride("_method"));
 
 app.set("view engine", "ejs");
 
-const urlDatabase = {
-  b2xVn2: {
-    longURL: "http://www.lighthouselabs.ca",
-    userID: "aJ48lW",
-    dateTimeTracker: [],
-    urlVisitCounter: 1,
-    visiterTracker: [],
-  },
-  "9sm5xK": {
-    longURL: "http://www.google.com",
-    userID: "aJ48lW",
-    dateTimeTracker: [],
-    urlVisitCounter: 1,
-    visiterTracker: [],
-  },
-};
-
-const users = {
-  userRandomID: {
-    id: "userRandomID",
-    email: "user@exmaple.com",
-    password: "purple-monkey-dinosaur",
-  },
-  user2RandomID: {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: "dishwasher-funk",
-  },
-};
-
 // GET
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  const user_id = req.session.user_id;
+  const user = users[user_id];
+  if (!user) {
+    const user_id = req.session.user_id;
+    const user = users[user_id];
+    const templateVars = { user };
+    res.render("urls_login", templateVars);
+  } else {
+    const user_id = req.session.user_id;
+    const user = users[user_id];
+    const templateVars = {
+      urls: urlsForUser(user_id),
+      user,
+    };
+    res.render("urls_index", templateVars);
+  }
 });
 
 app.get("/urls.json", (req, res) => {
@@ -109,10 +99,16 @@ app.get("/urls/:id", (req, res) => {
     res.send("Please login to view page!");
     return;
   }
+  const userUrls = urlsForUser(req.session.user_id);
+  const keysOfUserUrls = Object.keys(userUrls);
   const keysOfUrlDatabase = Object.keys(urlDatabase);
   if (!keysOfUrlDatabase.includes(req.params.id)) {
     // if the id does not exist yet
     res.status(403).send("The id does not exist!");
+    return;
+  } else if (!keysOfUserUrls.includes(req.params.id)) {
+    // if user is logged in, but the page does not belong to them
+    res.status(403).send("You do not own this url, so you can not view it"); // They can view but they can not edit
     return;
   } else {
     const user_id = req.session.user_id;
@@ -350,26 +346,3 @@ app.post("/register", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
-
-// 6 string generator
-
-function generateRandomString() {
-  let randomString = "";
-  const characters =
-    "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  for (let i = 0; i < 6; i++) {
-    randomString += characters.charAt(
-      Math.floor(Math.random() * characters.length)
-    );
-  }
-  return randomString;
-}
-
-function urlsForUser(id) {
-  let urls = {};
-  for (const url in urlDatabase) {
-    const urlUserID = urlDatabase[url]["userID"];
-    if (urlUserID === id) urls[url] = urlDatabase[url];
-  }
-  return urls;
-}
